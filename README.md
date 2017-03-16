@@ -1,6 +1,6 @@
 # Docker Ruby-Base
 
-[![](https://images.microbadger.com/badges/image/zerco0d3/ruby-base.svg)](https://microbadger.com/images/zeroc0de/ruby-base)
+[![](https://images.microbadger.com/badges/image/zerco0d3/ruby-base.svg)](https://microbadger.com/images/zeroc0d3/ruby-base)
 
 Base image to build Docker container for Ruby applications
 
