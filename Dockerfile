@@ -2,11 +2,6 @@ FROM ruby:2.4.0
 
 MAINTAINER ZeroC0D3 Team <zeroc0d3.0912@gmail.com>
 
-ARG VCS_REF
-
-LABEL org.label-schema.vcs-ref=$VCS_REF \
-  org.label-schema.vcs-url="e.g. https://github.com/microscaling/microscaling"
-
 # Set time zone
 ENV TZ=Asia/Jakarta
 
@@ -20,21 +15,37 @@ RUN apt-get update && apt-get install -y locales && \
 ENV LC_ALL en_US.UTF-8
 
 # Install Nginx
-# Source: https://github.com/nginxinc/docker-nginx/blob/master/stable/jessie/Dockerfile
-ENV NGINX_VERSION 1.10.3-1~jessie
-RUN apt-key adv --keyserver hkp://pgp.mit.edu:80 --recv-keys 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62 \
-  && echo "deb http://nginx.org/packages/debian/ jessie nginx" >> /etc/apt/sources.list \
-  && apt-get update \
-  && apt-get install --no-install-recommends --no-install-suggests -y \
-            ca-certificates \
-            nginx=${NGINX_VERSION} \
-            nginx-module-xslt \
-            nginx-module-geoip \
-            nginx-module-image-filter \
-            nginx-module-perl \
-            nginx-module-njs \
-            gettext-base \
-  && rm -rf /var/lib/apt/lists/*
+# Based on https://github.com/nginxinc/docker-nginx/blob/master/stable/stretch/Dockerfile,
+# but adapted for Debian Jessie, because the Ruby image is using this
+ENV NGINX_VERSION 1.12.0-1~jessie
+ENV NJS_VERSION   1.12.0.0.1.10-1~jessie
+
+RUN set -e; \
+	NGINX_GPGKEY=573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62; \
+	found=''; \
+	for server in \
+		ha.pool.sks-keyservers.net \
+		hkp://keyserver.ubuntu.com:80 \
+		hkp://p80.pool.sks-keyservers.net:80 \
+		pgp.mit.edu \
+	; do \
+		echo "Fetching GPG key $NGINX_GPGKEY from $server"; \
+		apt-key adv --keyserver "$server" --keyserver-options timeout=10 --recv-keys "$NGINX_GPGKEY" && found=yes && break; \
+	done; \
+	test -z "$found" && echo >&2 "error: failed to fetch GPG key $NGINX_GPGKEY" && exit 1; \
+	exit 0
+
+RUN echo "deb http://nginx.org/packages/debian/ jessie nginx" >> /etc/apt/sources.list \
+	&& apt-get update \
+	&& apt-get install --no-install-recommends --no-install-suggests -y \
+						ca-certificates \
+						nginx=${NGINX_VERSION} \
+						nginx-module-xslt=${NGINX_VERSION} \
+						nginx-module-geoip=${NGINX_VERSION} \
+						nginx-module-image-filter=${NGINX_VERSION} \
+						nginx-module-njs=${NJS_VERSION} \
+						gettext-base \
+	&& rm -rf /var/lib/apt/lists/*
 
 # forward request and error logs to docker log collector
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
@@ -69,6 +80,23 @@ RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-
   && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
   && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
   && ln -s /usr/local/bin/node /usr/local/bin/nodejs
+
+ENV YARN_VERSION 0.23.2
+
+RUN set -ex \
+  && for key in \
+    6A010C5166006599AA17F08146C2130DFD2497F5 \
+  ; do \
+    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" || \
+    gpg --keyserver pgp.mit.edu --recv-keys "$key" || \
+    gpg --keyserver keyserver.pgp.com --recv-keys "$key" ; \
+  done \
+  && curl -fSL -o yarn.js "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-legacy-$YARN_VERSION.js" \
+  && curl -fSL -o yarn.js.asc "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-legacy-$YARN_VERSION.js.asc" \
+  && gpg --batch --verify yarn.js.asc yarn.js \
+  && rm yarn.js.asc \
+  && mv yarn.js /usr/local/bin/yarn \
+  && chmod +x /usr/local/bin/yarn
 
 # throw errors if Gemfile has been modified since Gemfile.lock
 RUN bundle config --global frozen 1
