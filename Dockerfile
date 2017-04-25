@@ -1,4 +1,4 @@
-FROM ruby:2.4.0
+FROM ruby:2.4.1
 
 MAINTAINER ZeroC0D3 Team <zeroc0d3.0912@gmail.com>
 
