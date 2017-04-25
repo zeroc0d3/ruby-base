@@ -1,5 +1,7 @@
 FROM ruby:2.4.0
 
+MAINTAINER ZeroC0D3 Team <zeroc0d3.0912@gmail.com>
+
 ARG VCS_REF
 
 LABEL org.label-schema.vcs-ref=$VCS_REF \
